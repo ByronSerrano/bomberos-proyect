@@ -1,13 +1,16 @@
 import type { CSSProperties } from 'react';
 import {
-  availableResources,
   capacity,
+  type Decision,
+  type ResourceKind,
+  reservations,
   type Session,
   stageFor,
   trainingScore,
 } from '@/domain/replay';
-import { exportReport } from '@/lib/presentation';
+import { costLabel, exportReport, resourceAmount, resourceInfo } from '@/lib/presentation';
 import { Icon } from '@/ui/Icon';
+import { Term } from '@/ui/Term';
 
 interface Props {
   session: Session;
@@ -16,8 +19,9 @@ interface Props {
 }
 export function Debrief({ session, onRestart, onReview }: Props) {
   const score = trainingScore(session);
+  const earned = session.history.reduce((sum, entry) => sum + entry.choice.score, 0);
+  const possible = session.frames.length * 25;
   const max = Math.max(...session.frames.map((frame) => frame.observations.length), 1);
-  const resources = availableResources(session);
   return (
     <>
       <section className="debrief-header">
@@ -46,6 +50,10 @@ export function Debrief({ session, onRestart, onReview }: Props) {
           <p>
             Puntuación didáctica sobre interpretación, verificación, planificación y continuidad. No
             mide el resultado de una emergencia real.
+          </p>
+          <p className="score-formula">
+            {earned} puntos de {possible} posibles. El puntaje es el redondeo de ({earned} /{' '}
+            {possible}) × 100, que da {score}.
           </p>
           <a href="#rubric" className="text-link">
             Ver la rúbrica <Icon name="ArrowRight" />
@@ -77,7 +85,8 @@ export function Debrief({ session, onRestart, onReview }: Props) {
             ))}
           </div>
           <p className="form-help">
-            UTC · orden por adquisición. Más detecciones no prueba mayor propagación.
+            <Term id="utc">UTC</Term> · orden por adquisición. Más detecciones no prueba mayor
+            propagación.
           </p>
         </section>
       </div>
@@ -89,28 +98,42 @@ export function Debrief({ session, onRestart, onReview }: Props) {
           <span className="small-tag muted-tag">RÚBRICA DIDÁCTICA</span>
         </div>
         {session.history.map((entry) => (
-          <article className="review-row" key={entry.frame}>
-            <time dateTime={entry.at}>{entry.at.slice(11, 16)} UTC</time>
-            <div>
-              <span className="eyebrow">{stageFor(session, entry.frame).criterion}</span>
-              <h3>{entry.choice.title}</h3>
-              <p>{entry.choice.feedback}</p>
-              {entry.note && <blockquote>Tu razonamiento: {entry.note}</blockquote>}
-            </div>
-            <span className="review-score">
-              {entry.choice.score}
-              <small>/ 25</small>
-            </span>
-          </article>
+          <ReviewEntry key={entry.frame} session={session} entry={entry} />
         ))}
         <div className="resource-summary">
-          Capacidad libre al cierre del ejercicio: {resources.field}/{capacity.field} equipos ·{' '}
-          {resources.logistics}/{capacity.logistics} apoyos logísticos · {resources.analysis}/
-          {capacity.analysis} analistas. Las asignaciones pendientes no representan despliegues
-          reales.
+          <p>Uso de recursos por etapa. Las asignaciones no representan despliegues reales.</p>
+          <ol className="resource-strip">
+            {session.frames.map((frame, index) => {
+              const held = reservations(session, index);
+              const decision = session.history[index];
+              return (
+                <li key={frame.at}>
+                  <time dateTime={frame.at}>{frame.at.slice(11, 16)} UTC</time>
+                  <span>
+                    {held.length
+                      ? held
+                          .map(
+                            (item) =>
+                              `${resourceAmount(item.kind, item.amount)} vuelve en la etapa ${item.returnsAt + 1}`,
+                          )
+                          .join(' · ')
+                      : 'Sin reservas de etapas anteriores'}
+                    {decision ? `. Esta etapa asigna ${costLabel(decision.choice)}.` : ''}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="form-help">
+            Cupo del ejercicio:{' '}
+            {(Object.keys(capacity) as ResourceKind[])
+              .map((kind) => resourceInfo[kind].label)
+              .join(' · ')}
+            .
+          </p>
         </div>
       </section>
-      <details className="source-card mt-6" id="rubric">
+      <details className="source-card mt-6" id="rubric" open>
         <summary>Rúbrica de evaluación transparente</summary>
         <p>
           Cada etapa vale 25 puntos. Se favorece documentar límites, contrastar fuentes, planificar
@@ -124,11 +147,20 @@ export function Debrief({ session, onRestart, onReview }: Props) {
               <div key={frame.at}>
                 <h3>{stage.criterion}</h3>
                 <ul>
-                  {stage.choices.map((choice) => (
-                    <li key={choice.id}>
-                      {choice.title} <b>{choice.score}/25</b>
-                    </li>
-                  ))}
+                  {stage.choices.map((choice) => {
+                    const chosen = session.history[i]?.choice.id === choice.id;
+                    const best = choice.score === 25;
+                    return (
+                      <li
+                        key={choice.id}
+                        className={`${chosen ? 'rubric-chosen' : ''} ${best ? 'rubric-best' : ''}`}
+                      >
+                        {chosen && <span className="small-tag">Elegida</span>}{' '}
+                        {best && <span className="small-tag">Mejor</span>} {choice.title}{' '}
+                        <b>{choice.score}/25</b>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
@@ -147,5 +179,30 @@ export function Debrief({ session, onRestart, onReview }: Props) {
         </button>
       </div>
     </>
+  );
+}
+
+function ReviewEntry({ session, entry }: { session: Session; entry: Decision }) {
+  const stage = stageFor(session, entry.frame);
+  const best = stage.choices.find((choice) => choice.score === 25);
+  return (
+    <article className="review-row">
+      <time dateTime={entry.at}>{entry.at.slice(11, 16)} UTC</time>
+      <div>
+        <span className="eyebrow">{stage.criterion}</span>
+        <h3>{entry.choice.title}</h3>
+        <p>{entry.choice.feedback}</p>
+        {entry.choice.score < 25 && best && (
+          <p className="review-alternative">
+            La opción con 25 era {best.title}. {best.feedback}
+          </p>
+        )}
+        {entry.note && <blockquote>Tu razonamiento: {entry.note}</blockquote>}
+      </div>
+      <span className="review-score">
+        {entry.choice.score}
+        <small>/ 25</small>
+      </span>
+    </article>
   );
 }

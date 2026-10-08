@@ -16,6 +16,7 @@ export interface WorkspaceState {
   selected: string | null;
   note: string;
   error: string | null;
+  notice: string | null;
 }
 export const initialWorkspace: WorkspaceState = {
   session: null,
@@ -24,9 +25,10 @@ export const initialWorkspace: WorkspaceState = {
   selected: null,
   note: '',
   error: null,
+  notice: null,
 };
 export type WorkspaceAction =
-  | { type: 'load'; session: Session }
+  | { type: 'load'; session: Session; message?: string }
   | { type: 'navigate'; view: View }
   | { type: 'seek'; frame: number }
   | { type: 'select'; choice: string }
@@ -48,7 +50,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   const session = state.session;
   switch (action.type) {
     case 'load':
-      return { ...initialWorkspace, session: action.session };
+      return { ...initialWorkspace, session: action.session, notice: action.message ?? null };
     case 'error':
       return { ...state, error: action.message };
     case 'navigate':

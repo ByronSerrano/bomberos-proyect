@@ -9,7 +9,7 @@ El proyecto distingue tres cosas: observaciones satelitales, contexto cartográf
 Requisito: Bun 1.4.1 o posterior. No se necesita Node, npm ni una cuenta de NASA para el caso incluido.
 
 ```sh
-cd ~/workspace/dev/personal/bomberos-proyect
+cd ~/workspace/dev/personal/bomberos/bomberos-proyect
 bun install --frozen-lockfile
 bun dev
 ```
@@ -143,7 +143,7 @@ Una asignación reserva recursos durante un número de etapas. Una acción no di
 
 La fuente aporta hora de adquisición, no hora exacta de publicación. Esta versión **no reconstruye qué información estaba disponible para un operador en un instante histórico**. Tampoco incluye viento, lluvia, población expuesta, rutas verificadas ni reportes de campo.
 
-Las posiciones se distribuyen al cliente con el snapshot completo: bloquear etapas es una mecánica pedagógica, no una defensa contra inspección del archivo. El estado del ejercicio vive en memoria y se reinicia al recargar la página.
+Las posiciones se distribuyen al cliente con el snapshot completo: bloquear etapas es una mecánica pedagógica, no una defensa contra inspección del archivo. El estado del ejercicio vive en memoria y se reinicia al recargar la página. localStorage solo guarda dos marcas: `disaster-replay:briefing-seen`, si ya viste el diálogo de cómo funciona, y `disaster-replay:theme`, el tema claro u oscuro. No guarda decisiones, notas ni recursos.
 
 ## Documentación
 

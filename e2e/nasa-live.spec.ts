@@ -19,6 +19,9 @@ test('real FIRMS query and rendered NASA GIBS tiles @live', async ({ page, reque
     (await health.json()).firmsConfigured,
     'La prueba live necesita FIRMS_MAP_KEY en .env.',
   ).toBe(true);
+  await page.addInitScript(() => {
+    localStorage.setItem('disaster-replay:briefing-seen', '1');
+  });
   await page.goto('/');
   await expect(page.locator('.thermal-detection')).toHaveCount(23);
   await expect
