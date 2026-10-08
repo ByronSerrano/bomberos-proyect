@@ -8,6 +8,7 @@
       "!node_modules",
       "!data",
       "!public",
+      "!presentations",
       "!test-results",
       "!playwright-report"
     ]
