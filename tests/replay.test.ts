@@ -6,7 +6,9 @@ import {
   capacity,
   commitDecision,
   createSession,
+  reservations,
   type Session,
+  shortfall,
   stageFor,
   trainingScore,
   visibleObservations,
@@ -42,6 +44,20 @@ describe('replay state transitions', () => {
     expect(() => commitDecision(session, 2, 'prepare-all')).toThrow();
     session = commitDecision(session, 2, 'prepare-contingency');
     expect(availableResources(session)).toEqual({ field: 2, logistics: 1, analysis: 2 });
+  });
+  test('reservations and shortfall explain what is held and what is missing', () => {
+    const session = commitDecision(createSession(dataset), 0, 'interpret-detections');
+    expect(reservations(session, 1)).toEqual([{ kind: 'analysis', amount: 1, returnsAt: 2 }]);
+    expect(reservations(session, 2)).toEqual([]);
+    const held = commitDecision(session, 1, 'verify-field');
+    const blocked = stageFor(held, 2).choices.find((choice) => choice.id === 'prepare-all');
+    if (!blocked) throw new Error('Falta la opción.');
+    expect(shortfall(blocked, availableResources(held))).toEqual([
+      { kind: 'field', need: 3, have: 2 },
+    ]);
+    const open = stageFor(held, 2).choices[0];
+    if (!open) throw new Error('Falta la opción.');
+    expect(shortfall(open, availableResources(held))).toEqual([]);
   });
   test('all valid paths finish, remain within capacity, and never mutate NASA observations', () => {
     const original = JSON.stringify(dataset.observations);

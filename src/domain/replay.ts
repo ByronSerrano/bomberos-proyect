@@ -69,7 +69,7 @@ export const stages: readonly Stage[] = [
         hold: 2,
         score: 25,
         feedback:
-          'Asignaste un equipo y apoyo logístico para contrastar la lectura. El ejercicio registra la solicitud; no inventa un reporte de campo recibido.',
+          'Asignaste un equipo y logística para contrastar la lectura. El ejercicio registra la solicitud; no inventa un reporte de campo recibido.',
       },
       {
         id: 'verify-satellite',
@@ -121,7 +121,7 @@ export const stages: readonly Stage[] = [
       },
       {
         id: 'prepare-all',
-        title: 'Enviar todas las brigadas al punto más intenso',
+        title: 'Enviar todos los equipos al punto más intenso',
         description: 'Priorizar únicamente la mayor FRP observada.',
         cost: { field: 3 },
         hold: 2,
@@ -213,14 +213,39 @@ export function stageFor(session: Session, frameIndex: number): Stage {
   if (!stage) throw new Error('Etapa fuera del ejercicio.');
   return stage;
 }
-export function availableResources(session: Session, index = session.history.length): Resources {
-  const result = { ...capacity };
+export interface Reservation {
+  kind: ResourceKind;
+  amount: number;
+  returnsAt: number;
+}
+export function reservations(session: Session, index: number): Reservation[] {
+  const result: Reservation[] = [];
   for (const entry of session.history) {
     if (entry.frame >= index || entry.frame + entry.choice.hold <= index) continue;
-    for (const key of Object.keys(capacity) as ResourceKind[])
-      result[key] -= entry.choice.cost[key] ?? 0;
+    for (const kind of Object.keys(capacity) as ResourceKind[]) {
+      const amount = entry.choice.cost[kind] ?? 0;
+      if (!amount) continue;
+      result.push({ kind, amount, returnsAt: entry.frame + entry.choice.hold });
+    }
   }
   return result;
+}
+export function availableResources(session: Session, index = session.history.length): Resources {
+  const result = { ...capacity };
+  for (const item of reservations(session, index)) result[item.kind] -= item.amount;
+  return result;
+}
+export interface Shortfall {
+  kind: ResourceKind;
+  need: number;
+  have: number;
+}
+export function shortfall(choice: Choice, resources: Resources): Shortfall[] {
+  return (Object.keys(capacity) as ResourceKind[]).flatMap((kind) => {
+    const need = choice.cost[kind] ?? 0;
+    const have = resources[kind];
+    return have < need ? [{ kind, need, have }] : [];
+  });
 }
 export function canAfford(choice: Choice, resources: Resources): boolean {
   return (Object.keys(capacity) as ResourceKind[]).every(

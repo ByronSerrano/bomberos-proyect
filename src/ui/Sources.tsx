@@ -1,22 +1,27 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { loadSample, requestJson } from '@/data/client';
 import {
+  bboxSchema,
   type Dataset,
   datasetSchema,
   eonetResponseSchema,
   firmsQuerySchema,
+  firmsSourceLabels,
   type NaturalEvent,
 } from '@/domain/models';
 import { errorMessage, eventLocation } from '@/lib/presentation';
+import { BboxPicker } from '@/ui/BboxPicker';
 import { Icon } from '@/ui/Icon';
+import { Term } from '@/ui/Term';
 
 interface Props {
   dataset: Dataset;
-  onDataset: (dataset: Dataset) => void;
+  onDataset: (dataset: Dataset, message?: string) => void;
   onBack: () => void;
 }
+type FieldName = 'bbox' | 'date' | 'days' | 'source';
 export function Sources({ dataset, onDataset, onBack }: Props) {
-  const [bbox, setBbox] = useState('-81.1,-2.5,-79.5,0.2');
+  const [bbox, setBbox] = useState(() => dataset.bbox.join(','));
   const [date, setDate] = useState(() =>
     new Date(Date.now() - 4 * 86400000).toISOString().slice(0, 10),
   );
@@ -30,6 +35,7 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
     'Consulta el catálogo para explorar eventos reales. El caso local funciona sin conexión.',
   );
   const [eventsBusy, setEventsBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
   const pending = useRef<AbortController | null>(null);
   const pendingEvents = useRef<AbortController | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -55,6 +61,15 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
       pending.current?.abort();
       pendingEvents.current?.abort();
     };
+  }, []);
+  useEffect(() => {
+    function revealLayers() {
+      if (window.location.hash !== '#capas') return;
+      document.getElementById('capas')?.scrollIntoView({ block: 'start' });
+    }
+    revealLayers();
+    window.addEventListener('hashchange', revealLayers);
+    return () => window.removeEventListener('hashchange', revealLayers);
   }, []);
   async function startDataset(sample: boolean) {
     if (pending.current) return;
@@ -83,7 +98,8 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
               ),
             }),
           );
-      if (!controller.signal.aborted) onDataset(next);
+      if (!controller.signal.aborted)
+        onDataset(next, sample ? undefined : `Nuevo replay cargado: ${next.subtitle}`);
     } catch (error) {
       if (!controller.signal.aborted) setStatus(errorMessage(error));
     } finally {
@@ -91,8 +107,25 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
       pending.current = null;
     }
   }
+  function issue(error: { issues: { message: string }[] }, fallback: string): string {
+    return error.issues[0]?.message ?? fallback;
+  }
+  function validate(): boolean {
+    const next: Partial<Record<FieldName, string>> = {};
+    const area = bboxSchema.safeParse(bbox.split(',').map((part) => Number(part.trim())));
+    if (!area.success) next.bbox = issue(area.error, 'Revisa el área.');
+    const when = firmsQuerySchema.shape.date.safeParse(date);
+    if (!when.success) next.date = issue(when.error, 'Revisa la fecha.');
+    const span = firmsQuerySchema.shape.days.safeParse(Number(days));
+    if (!span.success) next.days = issue(span.error, 'Revisa los días.');
+    const product = firmsQuerySchema.shape.source.safeParse(source);
+    if (!product.success) next.source = issue(product.error, 'Revisa el producto.');
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!validate()) return;
     void startDataset(false);
   }
   async function fetchEvents() {
@@ -235,36 +268,50 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
               <label>
                 Área oeste, sur, este, norte
                 <input
+                  id="firms-bbox"
                   name="bbox"
                   required
                   value={bbox}
                   onChange={(event) => setBbox(event.target.value)}
                   autoComplete="off"
-                  aria-describedby="bbox-help"
+                  aria-invalid={Boolean(fieldErrors.bbox)}
+                  aria-describedby={fieldErrors.bbox ? 'bbox-help bbox-error' : 'bbox-help'}
                 />
               </label>
               <p id="bbox-help" className="form-help">
-                Ejemplo en la costa de Ecuador. Máximo 10° por lado. No equivale a un límite
+                Área del ejercicio actual. Máximo 10° por lado. No equivale a un límite
                 administrativo.
               </p>
+              {fieldErrors.bbox && (
+                <p id="bbox-error" className="field-error">
+                  {fieldErrors.bbox}
+                </p>
+              )}
+              <BboxPicker value={bbox} onChange={setBbox} />
               <div className="form-row">
                 <label>
                   Fecha inicial UTC
                   <input
+                    id="firms-date"
                     type="date"
                     name="date"
                     value={date}
                     onChange={(event) => setDate(event.target.value)}
                     max={new Date().toISOString().slice(0, 10)}
                     required
+                    aria-invalid={Boolean(fieldErrors.date)}
+                    aria-describedby={fieldErrors.date ? 'date-error' : undefined}
                   />
                 </label>
                 <label>
                   Días
                   <select
+                    id="firms-days"
                     name="days"
                     value={days}
                     onChange={(event) => setDays(event.target.value)}
+                    aria-invalid={Boolean(fieldErrors.days)}
+                    aria-describedby={fieldErrors.days ? 'days-error' : undefined}
                   >
                     {[1, 2, 3, 4, 5].map((day) => (
                       <option key={day} value={day}>
@@ -274,21 +321,37 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
                   </select>
                 </label>
               </div>
+              {fieldErrors.date && (
+                <p id="date-error" className="field-error">
+                  {fieldErrors.date}
+                </p>
+              )}
+              {fieldErrors.days && (
+                <p id="days-error" className="field-error">
+                  {fieldErrors.days}
+                </p>
+              )}
               <label>
                 Producto
                 <select
+                  id="firms-source"
                   name="source"
                   value={source}
                   onChange={(event) => setSource(event.target.value)}
+                  aria-invalid={Boolean(fieldErrors.source)}
+                  aria-describedby={fieldErrors.source ? 'source-help source-error' : 'source-help'}
                 >
-                  <option value="VIIRS_NOAA20_NRT">NOAA-20 · reciente NRT</option>
-                  <option value="VIIRS_NOAA21_NRT">NOAA-21 · reciente NRT</option>
-                  <option value="VIIRS_NOAA20_SP">NOAA-20 · archivo SP</option>
-                  <option value="VIIRS_SNPP_SP">Suomi NPP · archivo SP</option>
+                  {Object.entries(firmsSourceLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <p className="form-help">
-                NRT cubre datos recientes; SP es el archivo de procesamiento estándar.{' '}
+              <p id="source-help" className="form-help">
+                <Term id="nrt">NRT</Term> cubre datos recientes; <Term id="sp">SP</Term> es el
+                archivo de procesamiento estándar. <Term id="utc">UTC</Term> es la hora de la
+                consulta.{' '}
                 <a
                   href="https://firms.modaps.eosdis.nasa.gov/api/data_availability/"
                   target="_blank"
@@ -297,6 +360,11 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
                   Consulta las fechas disponibles.
                 </a>
               </p>
+              {fieldErrors.source && (
+                <p id="source-error" className="field-error">
+                  {fieldErrors.source}
+                </p>
+              )}
               <button className="button-primary" type="submit">
                 <Icon name="Download" />
                 {busy ? 'Consultando…' : 'Consultar y comenzar nuevo replay'}
@@ -311,10 +379,67 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
             </p>
           </form>
         </section>
+        <section className="source-card source-wide" id="capas" tabIndex={-1}>
+          <div className="section-label">
+            <h2>
+              <Icon name="BookOpen" /> Qué significa cada capa
+            </h2>
+          </div>
+          <div className="method-grid">
+            <div>
+              <h3>Detecciones, no perímetros</h3>
+              <p>
+                Un punto <Term id="viirs">VIIRS</Term> indica una anomalía térmica dentro de una{' '}
+                <Term id="huella">huella</Term> del sensor. Los conteos, la{' '}
+                <Term id="confianza">confianza</Term> y la <Term id="frp">FRP</Term> no determinan
+                por sí solos área quemada, velocidad de propagación o peligro para una población.
+              </p>
+              <a
+                className="text-link"
+                href="https://www.earthdata.nasa.gov/data/tools/firms/faq"
+                target="_blank"
+                rel="noreferrer"
+              >
+                FIRMS FAQ <Icon name="ExternalLink" />
+              </a>
+            </div>
+            <div>
+              <h3>El reloj es de adquisición</h3>
+              <p>
+                La secuencia usa la hora <Term id="utc">UTC</Term> registrada por el satélite. La
+                fuente no incluye la hora exacta en que cada observación se hizo pública. Los saltos
+                entre lecturas no se interpolan.
+              </p>
+            </div>
+            <div>
+              <h3>La parte didáctica</h3>
+              <p>
+                Recursos, opciones y puntuación pertenecen al ejercicio. No se simulan extinción,
+                evacuados ni víctimas. La rúbrica no es un protocolo validado de respuesta a
+                emergencias.
+              </p>
+            </div>
+            <div>
+              <h3>Fondos geográficos</h3>
+              <p>
+                NASA <Term id="gibs">GIBS</Term> Blue Marble es una referencia estática, no una
+                imagen del incendio de esa fecha. Los fondos necesitan internet.
+              </p>
+              <a
+                className="text-link"
+                href="https://nasa-gibs.github.io/gibs-api-docs/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                NASA GIBS <Icon name="ExternalLink" />
+              </a>
+            </div>
+          </div>
+        </section>
         <section className="source-card source-wide">
           <div className="section-label">
             <h2>
-              <Icon name="Activity" /> Catálogo de eventos EONET
+              <Icon name="Activity" /> Catálogo de eventos <Term id="eonet">EONET</Term>
             </h2>
             <button
               type="button"
@@ -352,62 +477,6 @@ export function Sources({ dataset, onDataset, onBack }: Props) {
                 </article>
               );
             })}
-          </div>
-        </section>
-        <section className="source-card source-wide">
-          <div className="section-label">
-            <h2>
-              <Icon name="BookOpen" /> Qué significa cada capa
-            </h2>
-          </div>
-          <div className="method-grid">
-            <div>
-              <h3>Detecciones, no perímetros</h3>
-              <p>
-                Un punto VIIRS indica una anomalía térmica dentro de una huella del sensor. Los
-                conteos, la confianza y la FRP no determinan por sí solos área quemada, velocidad de
-                propagación o peligro para una población.
-              </p>
-              <a
-                className="text-link"
-                href="https://www.earthdata.nasa.gov/data/tools/firms/faq"
-                target="_blank"
-                rel="noreferrer"
-              >
-                FIRMS FAQ <Icon name="ExternalLink" />
-              </a>
-            </div>
-            <div>
-              <h3>El reloj es de adquisición</h3>
-              <p>
-                La secuencia usa la hora UTC registrada por el satélite. La fuente no incluye la
-                hora exacta en que cada observación se hizo pública. Los saltos entre lecturas no se
-                interpolan.
-              </p>
-            </div>
-            <div>
-              <h3>La parte didáctica</h3>
-              <p>
-                Recursos, opciones y puntuación pertenecen al ejercicio. No se simulan extinción,
-                evacuados ni víctimas. La rúbrica no es un protocolo validado de respuesta a
-                emergencias.
-              </p>
-            </div>
-            <div>
-              <h3>Fondos geográficos</h3>
-              <p>
-                NASA GIBS Blue Marble es una referencia estática, no una imagen del incendio de esa
-                fecha. Los fondos necesitan internet.
-              </p>
-              <a
-                className="text-link"
-                href="https://nasa-gibs.github.io/gibs-api-docs/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                NASA GIBS <Icon name="ExternalLink" />
-              </a>
-            </div>
           </div>
         </section>
       </div>

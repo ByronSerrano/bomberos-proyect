@@ -4,6 +4,7 @@ import {
   datasetSchema,
   eonetResponseSchema,
   firmsQuerySchema,
+  firmsSourceLabels,
 } from '@/domain/models';
 
 export class ApiError extends Error {
@@ -106,8 +107,8 @@ export async function getFirms(input: unknown, mapKey: string | undefined): Prom
       );
     return datasetSchema.parse({
       id: `firms-${source}-${date}`,
-      title: 'Sector de observación',
-      subtitle: `${source} · ${date} · ${days} día(s)`,
+      title: `Sector ${bbox.map((value) => value.toFixed(1)).join(', ')}`,
+      subtitle: `${firmsSourceLabels[source]} · ${date} · ${days} día${days === 1 ? '' : 's'}`,
       bbox,
       sourceUrl: 'https://firms.modaps.eosdis.nasa.gov/api/area/',
       documentationUrl: 'https://firms.modaps.eosdis.nasa.gov/api/area/',

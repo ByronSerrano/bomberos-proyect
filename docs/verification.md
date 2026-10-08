@@ -1,5 +1,15 @@
 # Registro de verificación
 
+## Mejoras de UI didáctica
+
+Comprobaciones locales del 7 de octubre de 2026:
+
+- Biome y TypeScript estricto sin errores.
+- **27 pruebas unitarias aprobadas**, con 899 aserciones. Cubren `costLabel`, `satelliteLabel`, `reservations` y `shortfall`.
+- **14 pruebas Playwright deterministas aprobadas en desarrollo**: siete escenarios en escritorio 1440 × 1000 y los mismos siete en móvil 390 × 844. Incluyen briefing, Reiniciar a 390 px, tarjeta de retroalimentación, rúbrica marcada y pestaña Debrief.
+- Las mismas 14 pruebas pasan contra el build de producción servido por Bun.
+- No se repitió la consulta FIRMS en vivo. Sigue dependiendo de internet y de `FIRMS_MAP_KEY`.
+
 ## Migración React / TSX
 
 Comprobaciones locales de septiembre de 2026:

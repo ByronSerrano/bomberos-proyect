@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react';
 import type { View } from '@/domain/workspace';
-import { Icon } from '@/ui/Icon';
+import { Icon, type IconName } from '@/ui/Icon';
 
 interface Props {
   view: View;
   ready: boolean;
+  completed: boolean;
   onNavigate: (view: View) => void;
+  onBriefing: () => void;
   children: ReactNode;
 }
-export function Layout({ view, ready, onNavigate, children }: Props) {
+const tabs: { view: View; label: string; icon: IconName }[] = [
+  { view: 'workspace', label: 'Sala de mando', icon: 'Compass' },
+  { view: 'sources', label: 'Fuentes y datos', icon: 'Database' },
+];
+export function Layout({ view, ready, completed, onNavigate, onBriefing, children }: Props) {
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -25,24 +31,32 @@ export function Layout({ view, ready, onNavigate, children }: Props) {
           </span>
         </a>
         <nav aria-label="Secciones">
-          <button
-            type="button"
-            className={`nav-tab ${view !== 'sources' ? 'active' : ''}`}
-            aria-current={view !== 'sources' ? 'page' : undefined}
-            disabled={!ready}
-            onClick={() => onNavigate('workspace')}
-          >
-            <Icon name="Compass" /> Sala de mando
+          <button type="button" className="nav-tab briefing-tab" onClick={onBriefing}>
+            <Icon name="BookOpen" /> <span className="max-[540px]:sr-only">Cómo funciona</span>
           </button>
-          <button
-            type="button"
-            className={`nav-tab ${view === 'sources' ? 'active' : ''}`}
-            aria-current={view === 'sources' ? 'page' : undefined}
-            disabled={!ready}
-            onClick={() => onNavigate('sources')}
-          >
-            <Icon name="Database" /> Fuentes y datos
-          </button>
+          {tabs.map((tab) => (
+            <button
+              key={tab.view}
+              type="button"
+              className={`nav-tab ${view === tab.view ? 'active' : ''}`}
+              aria-current={view === tab.view ? 'page' : undefined}
+              disabled={!ready}
+              onClick={() => onNavigate(tab.view)}
+            >
+              <Icon name={tab.icon} /> {tab.label}
+            </button>
+          ))}
+          {completed && (
+            <button
+              type="button"
+              className={`nav-tab ${view === 'debrief' ? 'active' : ''}`}
+              aria-current={view === 'debrief' ? 'page' : undefined}
+              disabled={!ready}
+              onClick={() => onNavigate('debrief')}
+            >
+              <Icon name="Check" /> Debrief
+            </button>
+          )}
         </nav>
         <span className="local-tag">
           <i /> ENTORNO LOCAL
