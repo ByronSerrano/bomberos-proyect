@@ -131,7 +131,7 @@ export function Workspace({ state, dispatch }: Props) {
               <span className="eyebrow">LÍNEA DE TIEMPO</span>
               <h2>La información llega por etapas</h2>
             </div>
-            <span className="mono text-slate-400">
+            <span className="mono timeline-index">
               {String(index + 1).padStart(2, '0')} /{' '}
               {String(session.frames.length).padStart(2, '0')}
             </span>

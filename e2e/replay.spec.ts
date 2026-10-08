@@ -194,6 +194,24 @@ test('Reiniciar sigue visible a 390 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: 'Reiniciar' })).toBeVisible();
 });
+test('el tema claro es el inicial y el switch lo conserva', async ({ page }) => {
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
+    .toBe('rgb(247, 248, 246)');
+  await page.getByRole('button', { name: 'Tema claro' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('button', { name: 'Tema oscuro' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.reload();
+  await expect(page.locator('.thermal-detection')).toHaveCount(23);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
+    .toBe('rgb(10, 18, 24)');
+});
 test('la rúbrica marca la opción elegida y la de 25', async ({ page }) => {
   await page.locator('input[value="interpret-wait"]').check();
   await page.getByRole('button', { name: 'Confirmar y avanzar' }).click();

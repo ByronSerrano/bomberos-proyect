@@ -6,12 +6,17 @@ import { Briefing, briefingStorageKey } from '@/ui/Briefing';
 import { Debrief } from '@/ui/Debrief';
 import { Layout } from '@/ui/Layout';
 import { Sources } from '@/ui/Sources';
+import { applyTheme, persistTheme, readStoredTheme, type Theme } from '@/ui/theme';
 import { Workspace } from '@/ui/Workspace';
 
 export function App() {
   const [state, dispatch] = useReducer(workspaceReducer, initialWorkspace);
   const [attempt, setAttempt] = useState(0);
   const [briefingOpen, setBriefingOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => readStoredTheme());
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
   useEffect(() => {
     try {
       if (localStorage.getItem(briefingStorageKey) !== '1') setBriefingOpen(true);
@@ -27,6 +32,11 @@ export function App() {
     window.addEventListener('disaster-replay:layers', openLayers);
     return () => window.removeEventListener('disaster-replay:layers', openLayers);
   }, []);
+  function toggleTheme() {
+    const next: Theme = theme === 'light' ? 'dark' : 'light';
+    persistTheme(next);
+    setTheme(next);
+  }
   function dismissBriefing() {
     try {
       localStorage.setItem(briefingStorageKey, '1');
@@ -57,8 +67,10 @@ export function App() {
         view={state.view}
         ready={!!session}
         completed={completed}
+        theme={theme}
         onNavigate={(view) => dispatch({ type: 'navigate', view })}
         onBriefing={() => setBriefingOpen(true)}
+        onToggleTheme={toggleTheme}
       >
         {state.error && (
           <div className="notice" role="alert">

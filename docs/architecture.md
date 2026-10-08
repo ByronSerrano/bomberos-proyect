@@ -46,6 +46,6 @@ Leaflet maneja zoom, capas y coordenadas. Los tiles tienen atribución y necesit
 
 El estado del ejercicio no persiste entre recargas. La exportación del debrief permite conservar la sesión de forma explícita. No se almacenan claves en el cliente.
 
-La única persistencia es la clave `disaster-replay:briefing-seen` en localStorage. Recuerda si la persona ya cerró el diálogo inicial de cómo funciona. No guarda etapa, decisiones, notas ni recursos, y el botón "Cómo funciona" vuelve a abrir ese diálogo.
+localStorage guarda dos marcas y nada del ejercicio. `disaster-replay:briefing-seen` recuerda si la persona ya cerró el diálogo inicial de cómo funciona. `disaster-replay:theme` guarda `light` o `dark`. No guarda etapa, decisiones, notas ni recursos, y el botón "Cómo funciona" vuelve a abrir ese diálogo.
 
 El dataset inicial es pequeño y verificable. Los resultados API se limitan a 15 000 observaciones; la respuesta de origen tiene un tope de 20 MiB. El código no intenta inferir propagación, daño ni población a partir del número de detecciones.
