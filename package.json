@@ -1,0 +1,51 @@
+{
+  "name": "nasa-challenge",
+  "private": true,
+  "version": "0.2.0",
+  "description": "NASA observations replayed as transparent emergency-response exercises.",
+  "packageManager": "bun@1.4.1",
+  "engines": {
+    "bun": ">=1.4.1"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "bun scripts/dev.ts",
+    "dev:web": "bun --bun vite --configLoader native --host 127.0.0.1 --strictPort",
+    "dev:api": "bun --watch server/index.ts",
+    "build": "bun run typecheck && bun --bun vite build --configLoader native",
+    "start": "bun server/index.ts --production",
+    "preview": "bun --bun vite preview --configLoader native --host 127.0.0.1 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test ./tests",
+    "test:e2e": "bun --bun playwright test --grep-invert @live",
+    "test:e2e:live": "bun --bun playwright test --grep @live --project desktop",
+    "test:e2e:production": "bun run build && E2E_TARGET=production bun --bun playwright test --grep-invert @live",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "bun run lint && bun run typecheck && bun run test",
+    "data:sync": "bun scripts/sync-sample.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@playwright/test": "^1.63.0",
+    "@types/bun": "^1.4.1",
+    "@types/leaflet": "^1.9.22",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.41.0",
+    "papaparse": "^5.7.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-leaflet": "^5.0.0",
+    "tailwindcss": "^4.3.3",
+    "zod": "^4.5.4"
+  }
+}
