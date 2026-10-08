@@ -48,6 +48,12 @@ export const firmsSources = [
   'VIIRS_NOAA20_SP',
   'VIIRS_SNPP_SP',
 ] as const;
+export const firmsSourceLabels: Record<(typeof firmsSources)[number], string> = {
+  VIIRS_NOAA20_NRT: 'NOAA-20 · reciente NRT',
+  VIIRS_NOAA21_NRT: 'NOAA-21 · reciente NRT',
+  VIIRS_NOAA20_SP: 'NOAA-20 · archivo SP',
+  VIIRS_SNPP_SP: 'Suomi NPP · archivo SP',
+};
 export const firmsQuerySchema = z.object({
   bbox: bboxSchema,
   source: z.enum(firmsSources),
